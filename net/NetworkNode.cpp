@@ -92,7 +92,7 @@ int NetworkNode::broadcast(Message &message) {
     return 0;
 }
 
-void NetworkNode::server() const {
+void NetworkNode::server() {
     while (this->running) {
         sockaddr client_address{};
         socklen_t client_address_size = sizeof(client_address);
@@ -112,11 +112,15 @@ void NetworkNode::server() const {
         if (bytes_read > 0) {
             buffer[bytes_read] = '\0';
             std::string received_message(buffer, static_cast<size_t>(bytes_read));
-            std::cout
-                    <<
-                    "Mensagem recebida: " << received_message << std::endl;
+            onMessage(received_message);
         }
 
         close(client_fd);
     }
+}
+
+void NetworkNode::onMessage(Message &message) {
+    std::cout
+            <<
+            "Mensagem recebida: " << received_message << std::endl;
 }

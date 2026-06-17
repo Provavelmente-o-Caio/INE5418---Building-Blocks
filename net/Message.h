@@ -19,12 +19,10 @@ enum TipoMensagem {
 
 class Message {
 public:
-    Message(TipoMensagem type, std::string from, std::string to, std::string payload);
-
-    ~Message();
+    Message() = default;
 
     // getters
-    const TipoMensagem getType() const;
+    TipoMensagem getType() const;
 
     const std::string &getFrom() const;
 
@@ -42,15 +40,19 @@ public:
     void setPayload(const std::string &payload);
 
     //functions
-    std::string serialize();
+    static Message serialize(std::string &message);
 
-    static Message deserialize(std::string &message);
+    std::string deserialize();
 
 private:
     TipoMensagem type;
     std::string from;
     std::string to;
     std::string payload;
+
+    static std::string type_to_string(TipoMensagem type);
+
+    static TipoMensagem string_to_type(const std::string &type);
 };
 
 
