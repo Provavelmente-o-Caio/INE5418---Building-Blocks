@@ -1,13 +1,21 @@
 #include <iostream>
+#include "net/NetworkNode.h"
+
+
+#include <chrono>
+#include <thread>
 
 int main() {
+    NetworkNode node("A", 5001);
 
-    const auto lang = "C++";
-    std::cout << "Hello and welcome to " << lang << "!\n";
-
-    for (int i = 1; i <= 5; i++) {
-        std::cout << "i = " << i << std::endl;
+    if (node.start() != 0) {
+        return 1;
     }
+
+    std::cout << "Pressione Enter para encerrar..." << std::endl;
+    std::cin.get();
+
+    node.stop();
 
     return 0;
 }

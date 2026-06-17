@@ -4,8 +4,8 @@ project(distribuida_snapshot)
 set(CMAKE_CXX_STANDARD 26)
 
 add_executable(distribuida_snapshot main.cpp
-        util/Message.cpp
-        util/Message.h
+        net/Message.cpp
+        net/Message.h
         net/NetworkNode.cpp
         net/NetworkNode.h
         app/Conta.cpp
