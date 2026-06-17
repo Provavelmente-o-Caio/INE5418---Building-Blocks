@@ -19,15 +19,15 @@ class Message {
 public:
     Message() = default;
 
-    const std::string &getType() const;
+    const TipoMensagem getType() const;
     const std::string &getFrom() const;
     const std::string &getTo() const;
 
-    void setType(const std::string &type);
+    void setType(const TipoMensagem &type);
     void setFrom(const std::string &from);
     void setTo(const std::string &to);
 private:
-    std::string type;
+    TipoMensagem type;
     std::string from;
     std::string to;
 };
