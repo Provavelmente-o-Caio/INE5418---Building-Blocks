@@ -7,4 +7,8 @@ add_executable(distribuida_snapshot main.cpp
         util/Message.cpp
         util/Message.h
         net/NetworkNode.cpp
-        net/NetworkNode.h)
+        net/NetworkNode.h
+        app/Conta.cpp
+        app/Conta.h
+        app/Agencia.cpp
+        app/Agencia.h)
