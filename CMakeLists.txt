@@ -11,4 +11,7 @@ add_executable(distribuida_snapshot main.cpp
         app/Conta.cpp
         app/Conta.h
         app/Agencia.cpp
-        app/Agencia.h)
+        app/Agencia.h
+        util/utils.cpp
+        app/BankApplication.cpp
+        app/BankApplication.h)

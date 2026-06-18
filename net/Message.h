@@ -24,30 +24,30 @@ public:
     // getters
     TipoMensagem getType() const;
 
-    const std::string &getFrom() const;
+    const int &getFrom() const;
 
-    const std::string &getTo() const;
+    const int &getTo() const;
 
     const std::string &getPayload() const;
 
     // setters
     void setType(const TipoMensagem &type);
 
-    void setFrom(const std::string &from);
+    void setFrom(const int &from);
 
-    void setTo(const std::string &to);
+    void setTo(const int &to);
 
     void setPayload(const std::string &payload);
 
     //functions
-    static Message serialize(std::string &message);
+    static Message deserialize(const std::string &message);
 
-    std::string deserialize();
+    std::string serialize() const;
 
 private:
     TipoMensagem type;
-    std::string from;
-    std::string to;
+    int from;
+    int to;
     std::string payload;
 
     static std::string type_to_string(TipoMensagem type);

@@ -7,16 +7,15 @@
 #include <map>
 #include <string>
 #include "Conta.h"
+#include "../net/Message.h"
 
 class Agencia {
 public:
     // Construtores e destrutores
     Agencia(int id);
 
-    ~Agencia();
-
     // Funções de verdade
-    void addConta(Conta conta);
+    void addConta(const Conta &conta);
 
     void addAgencia(std::string nome, int id);
 
@@ -26,10 +25,8 @@ public:
 
     void sacar(int id, double valor);
 
-    void transferir(int id_origem, int id_destino, int id_agencia_destino, double valor);
-
     // Getters e Setters
-    int getId();
+    int getId() const;
 
     std::map<int, Conta> getContas();
 

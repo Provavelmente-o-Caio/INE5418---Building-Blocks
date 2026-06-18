@@ -12,11 +12,11 @@ TipoMensagem Message::getType() const {
     return this->type;
 }
 
-const std::string &Message::getFrom() const {
+const int &Message::getFrom() const {
     return this->from;
 }
 
-const std::string &Message::getTo() const {
+const int &Message::getTo() const {
     return this->to;
 }
 
@@ -24,7 +24,7 @@ const std::string &Message::getPayload() const {
     return this->payload;
 }
 
-void Message::setFrom(const std::string &from) {
+void Message::setFrom(const int &from) {
     this->from = from;
 }
 
@@ -32,7 +32,7 @@ void Message::setPayload(const std::string &payload) {
     this->payload = payload;
 }
 
-void Message::setTo(const std::string &to) {
+void Message::setTo(const int &to) {
     this->to = to;
 }
 
@@ -40,7 +40,7 @@ void Message::setType(const TipoMensagem &type) {
     this->type = type;
 }
 
-Message Message::serialize(std::string &message) {
+Message Message::deserialize(const std::string &message) {
     Message result;
 
     std::istringstream input(message);
@@ -61,11 +61,11 @@ Message Message::serialize(std::string &message) {
         std::getline(input_line, value);
 
         if (key == "type") {
-            result.type = string_to_type(value);
+            result.setType(string_to_type(value));
         } else if (key == "from") {
-            result.from = value;
+            result.setFrom(std::stoi(value));
         } else if (key == "to") {
-            result.to = value;
+            result.setTo(std::stoi(value));
         } else if (key == "payload") {
             result.payload = value;
         } else {
@@ -76,12 +76,12 @@ Message Message::serialize(std::string &message) {
     return result;
 }
 
-std::string Message::deserialize() {
+std::string Message::serialize() const {
     std::ostringstream output;
-    output << "type: " << type_to_string(this->type) << std::endl;
-    output << "from: " << this->from << std::endl;
-    output << "to: " << this->to << std::endl;
-    output << "payload: " << this->payload << std::endl;
+    output << "type:" << type_to_string(this->type) << std::endl;
+    output << "from:" << this->from << std::endl;
+    output << "to:" << this->to << std::endl;
+    output << "payload:" << this->payload << std::endl;
     return output.str();
 }
 

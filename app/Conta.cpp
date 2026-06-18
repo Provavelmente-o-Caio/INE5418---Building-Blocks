@@ -6,11 +6,12 @@
 
 #include <iostream>
 #include <ostream>
+#include <utility>
 
-Conta::Conta(int id, double saldo, std::string titular) {
+Conta::Conta(const int id, const double saldo, std::string titular) {
     this->id = id;
     this->saldo = saldo;
-    this->titular = titular;
+    this->titular = std::move(titular);
 }
 
 void Conta::depositar(const double valor) {

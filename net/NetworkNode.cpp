@@ -6,10 +6,9 @@
 
 #include <iostream>
 #include <ostream>
-#include <utility>
 
-NetworkNode::NetworkNode(std::string id, const int port) {
-    this->id = std::move(id);
+NetworkNode::NetworkNode(const int id, const int port) {
+    this->id = id;
     this->port = port;
 
     this->server_fd = -1;
@@ -52,6 +51,7 @@ int NetworkNode::start() {
         std::cerr << "Erro ao iniciar o servidor" << std::endl;
         close(server_fd);
         server_fd = -1;
+        return -1;
     }
 
     this->running = true;
@@ -63,7 +63,7 @@ int NetworkNode::start() {
 }
 
 int NetworkNode::stop() {
-    if (!this->running && this->server_fd != -1) {
+    if (!this->running && this->server_fd == -1) {
         return 0;
     }
     this->running = false;
@@ -84,20 +84,76 @@ int NetworkNode::stop() {
     return 0;
 }
 
-int NetworkNode::sendTo(int id_receiver, Message &message) {
+int NetworkNode::sendTo(const int id_receiver, const Message &message) const {
+    if (!this->connected_nodes.contains(id_receiver)) {
+        std::cerr << "Node desconhecido: " << id_receiver << std::endl;
+        return -1;
+    }
+
+    int receiver_port = this->connected_nodes.at(id_receiver);
+
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socket_fd < 0) {
+        std::cerr << "Erro ao criar socket cliente" << std::endl;
+        return -1;
+    }
+
+    sockaddr_in server_address{};
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(receiver_port);
+
+    if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0) {
+        std::cerr << "Endereço inválido" << std::endl;
+        close(socket_fd);
+        return -1;
+    }
+
+    if (connect(socket_fd, reinterpret_cast<sockaddr *>(&server_address), sizeof(server_address)) < 0) {
+        std::cerr << "Erro ao conectar no nó " << id_receiver << std::endl;
+        close(socket_fd);
+        return -1;
+    }
+
+    const std::string raw = message.serialize();
+
+    ssize_t sent = send(socket_fd, raw.c_str(), raw.size(), 0);
+
+    if (sent < 0) {
+        std::cerr << "Erro ao enviar mensagem" << std::endl;
+        close(socket_fd);
+        return -1;
+    }
+
+    close(socket_fd);
     return 0;
 }
 
 int NetworkNode::broadcast(Message &message) {
-    return 0;
+    int result = 0;
+
+    for (const auto &[nodeId, port]: connected_nodes) {
+        if (nodeId == this->id) {
+            continue;
+        }
+
+        message.setFrom(this->id);
+        message.setTo(nodeId);
+
+        if (sendTo(nodeId, message) != 0) {
+            result = -1;
+        }
+    }
+
+    return result;
 }
 
-void NetworkNode::server() {
+void NetworkNode::server() const {
     while (this->running) {
         sockaddr client_address{};
         socklen_t client_address_size = sizeof(client_address);
 
-        int client_fd = accept(this->server_fd, (sockaddr *) &client_address, &client_address_size);
+        const int client_fd = accept(this->server_fd, &client_address, &client_address_size);
 
         if (client_fd < 0) {
             if (this->running) {
@@ -112,15 +168,32 @@ void NetworkNode::server() {
         if (bytes_read > 0) {
             buffer[bytes_read] = '\0';
             std::string received_message(buffer, static_cast<size_t>(bytes_read));
-            onMessage(received_message);
+            Message message = Message::deserialize(received_message);
+            onMessage(message);
         }
 
         close(client_fd);
     }
 }
 
-void NetworkNode::onMessage(Message &message) {
-    std::cout
-            <<
-            "Mensagem recebida: " << received_message << std::endl;
+void NetworkNode::onMessage(const Message &message) const {
+    std::cout << "Mensagem recebida: " << this->id << std::endl;
+    std::cout << "Tipo: " << message.serialize() << std::endl;
+
+    if (this->messageHandler) {
+        this->messageHandler(message);
+    }
+}
+
+
+void NetworkNode::addNode(const int id, const int port) {
+    if (!this->connected_nodes.contains(id)) {
+        this->connected_nodes[id] = port;
+    } else {
+        std::cerr << "Node já presente: " << id << std::endl;
+    }
+}
+
+void NetworkNode::setMessageHandler(std::function<void(const Message &)> handler) {
+    this->messageHandler = std::move(handler);
 }
