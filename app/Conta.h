@@ -16,16 +16,19 @@ struct Transferencia {
 class Conta {
 public:
     Conta(int id, double saldo, std::string titular);
-    ~Conta();
 
     void depositar(double valor);
+
     void sacar(double valor);
-    void transferir(double valor, Conta &destino);
+
     void exibirHistorico();
 
-    int getId();
-    double getSaldo();
-    std::string getTitular();
+    int getId() const;
+
+    double getSaldo() const;
+
+    std::string getTitular() const;
+
 private:
     int id;
     double saldo;
