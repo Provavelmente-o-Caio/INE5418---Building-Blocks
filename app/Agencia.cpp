@@ -34,3 +34,14 @@ void Agencia::depositar(int id, const double valor) {
 void Agencia::addConta(const Conta &conta) {
     this->contas_locais.insert({conta.getId(), conta});
 }
+
+EstadoAgencia Agencia::captureState() const {
+    EstadoAgencia estado;
+    estado.idAgencia = this->id;
+
+    for (const auto &[idConta, conta] : this->contas_locais) {
+        estado.saldos[idConta] = conta.getSaldo();
+    }
+
+    return estado;
+}

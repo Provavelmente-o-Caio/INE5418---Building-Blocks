@@ -197,3 +197,7 @@ void NetworkNode::addNode(const int id, const int port) {
 void NetworkNode::setMessageHandler(std::function<void(const Message &)> handler) {
     this->messageHandler = std::move(handler);
 }
+
+const std::unordered_map<int, int> &NetworkNode::getConnectedNodes() const {
+    return this->connected_nodes;
+}

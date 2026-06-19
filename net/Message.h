@@ -13,7 +13,9 @@ enum TipoMensagem {
     CRIAR_CONTA,
     ERRO,
     PING,
-    PONG
+    PONG,
+    MARKER,          // Chandy-Lamport: inicia/propaga snapshot
+    SNAPSHOT_ESTADO  // Envia estado local ao coordenador
 };
 
 

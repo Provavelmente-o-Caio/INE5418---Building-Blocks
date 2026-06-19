@@ -41,6 +41,11 @@ public:
 
     void setMessageHandler(std::function<void(const Message &)> handler);
 
+    // Retorna o mapa de nós conectados (idNó -> porta).
+    // Usado pelo BankApplication para saber para quais peers enviar MARKERs
+    // e quantos MARKERs esperar receber.
+    const std::unordered_map<int, int> &getConnectedNodes() const;
+
 private:
     int id;
     int port;

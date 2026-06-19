@@ -57,7 +57,8 @@ static void imprimirAjuda() {
     std::cout << "      Envia PING para todos os peers em sequência.\n\n";
 
     std::cout << "  snapshot\n";
-    std::cout << "      Placeholder para futuro snapshot distribuído.\n\n";
+    std::cout << "      Inicia snapshot distribuído de Chandy-Lamport a partir desta agência.\n";
+    std::cout << "      Esta agência será o coordenador e receberá os estados de todas as outras.\n\n";
 
     std::cout << "  mutex\n";
     std::cout << "      Placeholder para futura exclusão mútua distribuída.\n\n";
@@ -257,9 +258,10 @@ int main(int argc, char **argv) {
                 }
 
                 if (command == "snapshot") {
-                    std::cout << "[AGENCIA " << idAgencia << "] "
-                            << "Snapshot distribuído ainda não implementado.\n";
-                    std::cout << "Próximo passo: criar SnapshotManager e mensagens MARKER/SNAPSHOT_RESULT.\n";
+                    // Inicia o snapshot distribuído de Chandy-Lamport.
+                    // Esta agência será o coordenador: salva seu estado local,
+                    // envia MARKERs para todos os peers e aguarda os estados deles.
+                    app.iniciarSnapshot();
                     continue;
                 }
 

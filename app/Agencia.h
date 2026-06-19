@@ -9,6 +9,12 @@
 #include "Conta.h"
 #include "../net/Message.h"
 
+// Estado local capturado no momento do snapshot
+struct EstadoAgencia {
+    int idAgencia;
+    std::map<int, double> saldos; // contaId -> saldo no momento da captura
+};
+
 class Agencia {
 public:
     // Construtores e destrutores
@@ -24,6 +30,11 @@ public:
     void depositar(int id, double valor);
 
     void sacar(int id, double valor);
+
+    // Captura atômica do estado local para o snapshot de Chandy-Lamport.
+    // Deve ser chamada com o mutex da agência já adquirido (ou sem operações
+    // concorrentes em andamento), garantindo consistência dos saldos.
+    EstadoAgencia captureState() const;
 
     // Getters e Setters
     int getId() const;

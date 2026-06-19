@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.31)
 project(distribuida_snapshot)
 
 set(CMAKE_CXX_STANDARD 26)
