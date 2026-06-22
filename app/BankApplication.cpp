@@ -173,9 +173,6 @@ void BankApplication::handleMarker(const Message &message) {
         snapshotConcluido = false;
         salvarEstadoLocal(idCoordenador);
 
-        lock.unlock();
-        propagarMarkers();
-        lock.lock();
     }
 
     if (gravandoCanal.count(remetente) && gravandoCanal.at(remetente)) {
