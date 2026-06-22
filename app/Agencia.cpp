@@ -14,7 +14,7 @@ int Agencia::getId() const {
     return this->id;
 }
 
-std::map<int, Conta> Agencia::getContas() {
+const std::map<int, Conta> &Agencia::getContas() const {
     return this->contas_locais;
 }
 
@@ -26,8 +26,8 @@ void Agencia::depositar(int id, const double valor) {
     this->contas_locais.at(id).depositar(valor);
 }
 
-void Agencia::addConta(const Conta &conta) {
-    this->contas_locais.insert({conta.getId(), conta});
+void Agencia::addConta(Conta conta) {
+    this->contas_locais.emplace(conta.getId(), std::move(conta));
 }
 
 void Agencia::deleteConta(int id) {

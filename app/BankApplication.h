@@ -13,6 +13,9 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <set>
+#include <condition_variable>
+#include <cstdint>
 
 #include <iostream>
 #include <sstream>
@@ -113,7 +116,34 @@ private:
         double valor
     );
 
+    static Message criarMensagemRequest(
+        int idAgenciaOrigem,
+        int idAgenciaDestino,
+        int64_t timestamp
+    );
+
+    static Message criarMensagemReply(
+        int idAgenciaOrigem,
+        int idAgenciaDestino,
+        int64_t timestamp
+    );
+
     static std::map<std::string, std::string> parsePayload(const std::string &payload);
+
+    void requestCriticalSection();
+    void releaseCriticalSection();
+    void handleRequest(const Message &message);
+    void handleReply(const Message &message);
+    void updateClock(int64_t timestamp);
+    bool hasPriorityOver(int64_t timestampOther, int nodeOther) const;
+
+    std::mutex raMutex;
+    std::condition_variable raCond;
+    int64_t logicalClock{0};
+    bool waitingForReply{false};
+    int64_t requestTimestamp{-1};
+    std::set<int> deferredReplies;
+    int outstandingReplies{0};
 
     int totalPeers() const;
 };

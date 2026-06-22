@@ -19,7 +19,7 @@ public:
     Agencia(int id);
 
     // Funções de verdade
-    void addConta(const Conta &conta);
+    void addConta(Conta conta);
 
     void deleteConta(int id);
 
@@ -35,7 +35,7 @@ public:
     // Getters e Setters
     int getId() const;
 
-    std::map<int, Conta> getContas();
+    const std::map<int, Conta> &getContas() const;
 
 private:
     int id;

@@ -91,6 +91,10 @@ std::string Message::type_to_string(const TipoMensagem type) {
             return "TRANSFERENCIA";
         case RESPOSTA:
             return "RESPOSTA";
+        case REQUEST:
+            return "REQUEST";
+        case REPLY:
+            return "REPLY";
         case CRIAR_CONTA:
             return "CRIAR_CONTA";
         case APAGAR_CONTA:
@@ -113,6 +117,8 @@ std::string Message::type_to_string(const TipoMensagem type) {
 TipoMensagem Message::string_to_type(const std::string &type) {
     if (type == "TRANSFERENCIA") return TRANSFERENCIA;
     if (type == "RESPOSTA") return RESPOSTA;
+    if (type == "REQUEST") return REQUEST;
+    if (type == "REPLY") return REPLY;
     if (type == "CRIAR_CONTA") return CRIAR_CONTA;
     if (type == "APAGAR_CONTA") return APAGAR_CONTA;
     if (type == "ERRO") return ERRO;

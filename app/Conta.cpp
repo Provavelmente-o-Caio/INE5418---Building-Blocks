@@ -3,7 +3,6 @@
 //
 
 #include "Conta.h"
-
 #include <iostream>
 #include <ostream>
 #include <utility>
@@ -15,11 +14,15 @@ Conta::Conta(const int id, const double saldo, std::string titular) {
 }
 
 void Conta::depositar(const double valor) {
+    //this->mtx.lock();
     this->saldo += valor;
+    //this->mtx.unlock();
 }
 
 void Conta::sacar(const double valor) {
+    //this->mtx.lock();
     this->saldo -= valor;
+    //this->mtx.unlock();
 }
 
 void Conta::exibirHistorico() {
