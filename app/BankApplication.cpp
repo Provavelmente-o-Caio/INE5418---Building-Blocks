@@ -3,6 +3,7 @@
 //
 
 #include "BankApplication.h"
+#include <algorithm>
 
 BankApplication::BankApplication(Agencia &agencia, NetworkNode &network)
     : agencia(agencia), network(network) {
@@ -32,6 +33,14 @@ void BankApplication::handleMensagem(const Message &message) {
 
         case PONG:
             handlePong(message);
+            break;
+
+        case REQUEST:
+            handleRequest(message);
+            break;
+
+        case REPLY:
+            handleReply(message);
             break;
 
         case ERRO:
@@ -68,7 +77,9 @@ void BankApplication::handleTransferencia(const Message &message) {
     const int toAccount = std::stoi(payload.at("TO_ACCOUNT"));
     const double amount = std::stod(payload.at("AMOUNT"));
 
+    requestCriticalSection();
     agencia.depositar(toAccount, amount);
+    releaseCriticalSection();
 
     std::cout << "[AGENCIA " << agencia.getId() << "] "
             << "Transferência recebida de agência "
@@ -94,10 +105,14 @@ void BankApplication::transferir(
     const int idContaDestino,
     const double valor
 ) {
+    requestCriticalSection();
     agencia.sacar(idContaOrigem, valor);
+    releaseCriticalSection();
 
     if (idAgenciaDestino == agencia.getId()) {
+        requestCriticalSection();
         agencia.depositar(idContaDestino, valor);
+        releaseCriticalSection();
         return;
     }
 
@@ -327,6 +342,42 @@ Message BankApplication::criarMensagemTransferencia(
     return message;
 }
 
+Message BankApplication::criarMensagemRequest(
+    const int idAgenciaOrigem,
+    const int idAgenciaDestino,
+    const int64_t timestamp
+) {
+    Message message;
+
+    message.setType(REQUEST);
+    message.setFrom(idAgenciaOrigem);
+    message.setTo(idAgenciaDestino);
+
+    std::ostringstream payload;
+    payload << "TIMESTAMP=" << timestamp;
+    message.setPayload(payload.str());
+
+    return message;
+}
+
+Message BankApplication::criarMensagemReply(
+    const int idAgenciaOrigem,
+    const int idAgenciaDestino,
+    const int64_t timestamp
+) {
+    Message message;
+
+    message.setType(REPLY);
+    message.setFrom(idAgenciaOrigem);
+    message.setTo(idAgenciaDestino);
+
+    std::ostringstream payload;
+    payload << "TIMESTAMP=" << timestamp;
+    message.setPayload(payload.str());
+
+    return message;
+}
+
 std::map<std::string, std::string> BankApplication::parsePayload(
     const std::string &payload
 ) {
@@ -366,7 +417,7 @@ void BankApplication::handleCriarConta(const Message &message) const {
         const std::string titular = payload.at("TITULAR");
         const double saldoInicial = std::stod(payload.at("SALDO"));
 
-        auto contas = agencia.getContas();
+        const auto &contas = agencia.getContas();
 
         if (contas.contains(accountId)) {
             std::cerr << "[AGENCIA " << agencia.getId() << "] "
@@ -431,7 +482,7 @@ void BankApplication::handleApagarConta(const Message &message) const {
 
         const int accountId = std::stoi(payload.at("ACCOUNT_ID"));
 
-        auto contas = agencia.getContas();
+        const auto &contas = agencia.getContas();
 
         if (!contas.contains(accountId)) {
             std::cerr << "[AGENCIA " << agencia.getId() << "] "
@@ -508,9 +559,104 @@ void BankApplication::handleErro(const Message &message) const {
             << std::endl;
 }
 
+void BankApplication::updateClock(const int64_t timestamp) {
+    logicalClock = std::max(logicalClock, timestamp) + 1;
+}
+
+bool BankApplication::hasPriorityOver(const int64_t timestampOther, const int nodeOther) const {
+    if (requestTimestamp < timestampOther) {
+        return true;
+    }
+    if (requestTimestamp > timestampOther) {
+        return false;
+    }
+    return agencia.getId() < nodeOther;
+}
+
+void BankApplication::requestCriticalSection() {
+    std::unique_lock<std::mutex> lock(raMutex);
+
+    waitingForReply = true;
+    requestTimestamp = ++logicalClock;
+    outstandingReplies = totalPeers();
+    deferredReplies.clear();
+
+    if (outstandingReplies == 0) {
+        return;
+    }
+
+    for (const auto &[peerId, peerPort] : network.getConnectedNodes()) {
+        if (peerId == agencia.getId()) {
+            continue;
+        }
+
+        Message request = criarMensagemRequest(agencia.getId(), peerId, requestTimestamp);
+        if (network.sendTo(peerId, request) != 0) {
+            std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                    << "Falha ao enviar REQUEST para agência " << peerId << ". "
+                    << "Contando como reply perdida.\n";
+            outstandingReplies--;
+        }
+    }
+
+    raCond.wait(lock, [this] { return outstandingReplies == 0; });
+}
+
+void BankApplication::releaseCriticalSection() {
+    std::unique_lock<std::mutex> lock(raMutex);
+
+    waitingForReply = false;
+    requestTimestamp = -1;
+
+    for (int deferredId : deferredReplies) {
+        Message reply = criarMensagemReply(agencia.getId(), deferredId, logicalClock);
+        if (network.sendTo(deferredId, reply) != 0) {
+            std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                    << "Falha ao enviar REPLY adiado para agência " << deferredId << ".\n";
+        }
+    }
+
+    deferredReplies.clear();
+}
+
+void BankApplication::handleRequest(const Message &message) {
+    const auto payload = parsePayload(message.getPayload());
+    const int64_t timestamp = std::stoll(payload.at("TIMESTAMP"));
+
+    std::unique_lock<std::mutex> lock(raMutex);
+    updateClock(timestamp);
+
+    const int requesterId = message.getFrom();
+    const bool shouldDefer = waitingForReply && hasPriorityOver(timestamp, requesterId);
+
+    if (shouldDefer) {
+        deferredReplies.insert(requesterId);
+        std::cout << "[AGENCIA " << agencia.getId() << "] "
+                << "Request de " << requesterId << " adiado.\n";
+    } else {
+        Message reply = criarMensagemReply(agencia.getId(), requesterId, logicalClock);
+        network.sendTo(requesterId, reply);
+    }
+}
+
+void BankApplication::handleReply(const Message &message) {
+    const auto payload = parsePayload(message.getPayload());
+    const int64_t timestamp = std::stoll(payload.at("TIMESTAMP"));
+
+    std::unique_lock<std::mutex> lock(raMutex);
+    updateClock(timestamp);
+
+    if (outstandingReplies > 0) {
+        outstandingReplies--;
+        if (outstandingReplies == 0) {
+            raCond.notify_all();
+        }
+    }
+}
+
 
 void BankApplication::imprimirContas() const {
-    auto contas = agencia.getContas();
+    const auto &contas = agencia.getContas();
 
     std::cout << "[AGENCIA " << agencia.getId() << "] Contas locais:" << std::endl;
 

@@ -10,6 +10,8 @@
 enum TipoMensagem {
     TRANSFERENCIA,
     RESPOSTA,
+    REQUEST,
+    REPLY,
     CRIAR_CONTA,
     APAGAR_CONTA,
     ERRO,
