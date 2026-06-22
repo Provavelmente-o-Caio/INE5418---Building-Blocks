@@ -93,6 +93,8 @@ std::string Message::type_to_string(const TipoMensagem type) {
             return "RESPOSTA";
         case CRIAR_CONTA:
             return "CRIAR_CONTA";
+        case APAGAR_CONTA:
+            return "APAGAR_CONTA";
         case ERRO:
             return "ERRO";
         case PING:
@@ -110,12 +112,13 @@ std::string Message::type_to_string(const TipoMensagem type) {
 
 TipoMensagem Message::string_to_type(const std::string &type) {
     if (type == "TRANSFERENCIA") return TRANSFERENCIA;
-    if (type == "RESPOSTA")      return RESPOSTA;
-    if (type == "CRIAR_CONTA")   return CRIAR_CONTA;
-    if (type == "ERRO")          return ERRO;
-    if (type == "PING")          return PING;
-    if (type == "PONG")          return PONG;
-    if (type == "MARKER")        return MARKER;
+    if (type == "RESPOSTA") return RESPOSTA;
+    if (type == "CRIAR_CONTA") return CRIAR_CONTA;
+    if (type == "APAGAR_CONTA") return APAGAR_CONTA;
+    if (type == "ERRO") return ERRO;
+    if (type == "PING") return PING;
+    if (type == "PONG") return PONG;
+    if (type == "MARKER") return MARKER;
     if (type == "SNAPSHOT_ESTADO") return SNAPSHOT_ESTADO;
 
     throw std::runtime_error("Unknown message type: " + type);

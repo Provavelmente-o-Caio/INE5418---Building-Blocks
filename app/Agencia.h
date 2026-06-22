@@ -5,9 +5,7 @@
 #ifndef DISTRIBUIDA_SNAPSHOT_AGENCIA_H
 #define DISTRIBUIDA_SNAPSHOT_AGENCIA_H
 #include <map>
-#include <string>
 #include "Conta.h"
-#include "../net/Message.h"
 
 // Estado local capturado no momento do snapshot
 struct EstadoAgencia {
@@ -22,8 +20,6 @@ public:
 
     // Funções de verdade
     void addConta(const Conta &conta);
-
-    void addAgencia(std::string nome, int id);
 
     void deleteConta(int id);
 
@@ -41,12 +37,9 @@ public:
 
     std::map<int, Conta> getContas();
 
-    std::map<int, std::pair<std::string, int> > getAgencias();
-
 private:
     int id;
     std::map<int, Conta> contas_locais;
-    std::map<int, std::pair<std::string, int> > agencias;
 };
 
 

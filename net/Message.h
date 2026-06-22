@@ -11,11 +11,12 @@ enum TipoMensagem {
     TRANSFERENCIA,
     RESPOSTA,
     CRIAR_CONTA,
+    APAGAR_CONTA,
     ERRO,
     PING,
     PONG,
-    MARKER,          // Chandy-Lamport: inicia/propaga snapshot
-    SNAPSHOT_ESTADO  // Envia estado local ao coordenador
+    MARKER, // Chandy-Lamport: inicia/propaga snapshot
+    SNAPSHOT_ESTADO // Envia estado local ao coordenador
 };
 
 

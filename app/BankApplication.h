@@ -41,6 +41,7 @@ private:
     NetworkNode &network;
 
     void handleTransferencia(const Message &message);
+
     // ----- Estado do snapshot de Chandy-Lamport -----
 
     // Protege todas as variáveis de snapshot abaixo contra acessos concorrentes.
@@ -65,7 +66,7 @@ private:
 
     // Mensagens de negócio recebidas em cada canal depois de salvar o estado local,
     // mas antes de receber o MARKER daquele canal.
-    std::map<int, std::vector<Message>> mensagensCanal;
+    std::map<int, std::vector<Message> > mensagensCanal;
 
     // Quantos peers ainda precisam nos enviar um MARKER para fechar o snapshot.
     int marcadoresPendentes{0};
@@ -76,6 +77,8 @@ private:
     void handleResposta(const Message &message) const;
 
     void handleCriarConta(const Message &message) const;
+
+    void handleApagarConta(const Message &message) const;
 
     void handlePing(const Message &message) const;
 

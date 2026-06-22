@@ -22,6 +22,10 @@ void BankApplication::handleMensagem(const Message &message) {
             handleCriarConta(message);
             break;
 
+        case APAGAR_CONTA:
+            handleApagarConta(message);
+            break;
+
         case PING:
             handlePing(message);
             break;
@@ -414,6 +418,68 @@ void BankApplication::handleCriarConta(const Message &message) const {
         resposta.setTo(message.getFrom());
         resposta.setPayload(
             std::string("STATUS=ERROR;MESSAGE=ERRO_AO_CRIAR_CONTA;DETAIL=") +
+            e.what()
+        );
+
+        network.sendTo(message.getFrom(), resposta);
+    }
+}
+
+void BankApplication::handleApagarConta(const Message &message) const {
+    try {
+        const auto payload = parsePayload(message.getPayload());
+
+        const int accountId = std::stoi(payload.at("ACCOUNT_ID"));
+
+        auto contas = agencia.getContas();
+
+        if (!contas.contains(accountId)) {
+            std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                    << "Conta " << accountId << " não existe. "
+                    << "Criação recusada.\n";
+
+            Message resposta;
+            resposta.setType(ERRO);
+            resposta.setFrom(agencia.getId());
+            resposta.setTo(message.getFrom());
+            resposta.setPayload(
+                "STATUS=ERROR;MESSAGE=CONTA_NAO_EXISTE;ACCOUNT_ID=" +
+                std::to_string(accountId)
+            );
+
+            network.sendTo(message.getFrom(), resposta);
+            return;
+        }
+
+        agencia.deleteConta(accountId);
+
+        std::cout << "[AGENCIA " << agencia.getId() << "] "
+                << "Conta apagada: "
+                << "id=" << accountId
+                << std::endl;
+
+        Message resposta;
+        resposta.setType(RESPOSTA);
+        resposta.setFrom(agencia.getId());
+        resposta.setTo(message.getFrom());
+        resposta.setPayload(
+            "STATUS=OK;MESSAGE=CONTA_APAGADA;ACCOUNT_ID=" +
+            std::to_string(accountId)
+        );
+
+        network.sendTo(message.getFrom(), resposta);
+    } catch (const std::exception &e) {
+        std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                << "Erro ao apagar conta: "
+                << e.what()
+                << std::endl;
+
+        Message resposta;
+        resposta.setType(ERRO);
+        resposta.setFrom(agencia.getId());
+        resposta.setTo(message.getFrom());
+        resposta.setPayload(
+            std::string("STATUS=ERROR;MESSAGE=ERRO_AO_DELETAR_CONTA;DETAIL=") +
             e.what()
         );
 

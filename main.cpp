@@ -54,6 +54,10 @@ static void imprimirAjuda() {
     std::cout << "      Cria uma conta em uma agência.\n";
     std::cout << "      Exemplo: criar_conta 2 21 Daniel 1000\n\n";
 
+    std::cout << "  apagar_conta <agencia_destino> <id_conta>\n";
+    std::cout << "      apagar uma conta em uma agência.\n";
+    std::cout << "      Exemplo: apagar_conta 2 21\n\n";
+
     std::cout << "  demo_transfer\n";
     std::cout << "      Executa uma transferência de demonstração, dependendo da agência atual.\n\n";
 
@@ -279,6 +283,36 @@ int main(int argc, char **argv) {
                     if (status != 0) {
                         std::cerr << "[AGENCIA " << idAgencia << "] "
                                 << "Falha ao enviar solicitação de criação de conta para agência "
+                                << agenciaDestino << "\n";
+                    }
+
+                    continue;
+                }
+
+                if (command == "apagar_conta") {
+                    if (tokens.size() != 3) {
+                        std::cerr << "Uso: apagar_conta <agencia_destino> <id_conta>\n";
+                        continue;
+                    }
+
+                    int agenciaDestino = std::stoi(tokens[1]);
+                    int idConta = std::stoi(tokens[2]);
+
+                    Message apagarConta;
+                    apagarConta.setType(APAGAR_CONTA);
+                    apagarConta.setFrom(idAgencia);
+                    apagarConta.setTo(agenciaDestino);
+
+                    std::ostringstream payload;
+                    payload << "ACCOUNT_ID=" << idConta;
+
+                    apagarConta.setPayload(payload.str());
+
+                    int status = node.sendTo(agenciaDestino, apagarConta);
+
+                    if (status != 0) {
+                        std::cerr << "[AGENCIA " << idAgencia << "] "
+                                << "Falha ao enviar solicitação de apagar conta para agência "
                                 << agenciaDestino << "\n";
                     }
 
