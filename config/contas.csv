@@ -1,0 +1,10 @@
+agencia_id;conta_id;titular;saldo
+1;1;Alice;1000
+1;10;Ana;1500
+1;11;Julia;2000
+2;2;Bob;500
+2;20;Bruno;1200
+2;21;Daniel;800
+3;3;Carol;700
+3;30;Cesar;900
+3;31;Marina;1300

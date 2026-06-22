@@ -4,25 +4,79 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <fstream>
+#include <stdexcept>
 
 #include "app/Agencia.h"
 #include "app/Conta.h"
 #include "app/BankApplication.h"
 #include "net/NetworkNode.h"
 
-static void carregarContasIniciais(Agencia &agencia, int idAgencia) {
-    if (idAgencia == 1) {
-        agencia.addConta(Conta(1, 1000.0, "Alice"));
-        agencia.addConta(Conta(10, 1500.0, "Ana"));
-    } else if (idAgencia == 2) {
-        agencia.addConta(Conta(2, 500.0, "Bob"));
-        agencia.addConta(Conta(20, 1200.0, "Bruno"));
-    } else if (idAgencia == 3) {
-        agencia.addConta(Conta(3, 700.0, "Carol"));
-        agencia.addConta(Conta(30, 900.0, "Cesar"));
-    } else {
-        throw std::runtime_error("Agência inválida. Use 1, 2 ou 3.");
+static std::vector<std::string> splitCsvLine(const std::string &line, char separator = ';') {
+    std::vector<std::string> result;
+    std::istringstream stream(line);
+    std::string item;
+
+    while (std::getline(stream, item, separator)) {
+        result.push_back(item);
     }
+
+    return result;
+}
+
+static bool carregarContasDeArquivo(
+    Agencia &agencia,
+    int idAgencia,
+    const std::string &path
+) {
+    std::ifstream file(path);
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool loadedAny = false;
+    int lineNumber = 0;
+
+    while (std::getline(file, line)) {
+        lineNumber++;
+
+        if (line.empty()) {
+            continue;
+        }
+
+        if (line[0] == '#') {
+            continue;
+        }
+
+        auto fields = splitCsvLine(line);
+
+        if (fields.size() != 4) {
+            std::cerr << "[CONFIG] Linha inválida em " << path
+                    << ":" << lineNumber << " -> " << line << "\n";
+            continue;
+        }
+
+        if (fields[0] == "agencia_id") {
+            continue;
+        }
+
+        int agenciaArquivo = std::stoi(fields[0]);
+
+        if (agenciaArquivo != idAgencia) {
+            continue;
+        }
+
+        int contaId = std::stoi(fields[1]);
+        std::string titular = fields[2];
+        double saldo = std::stod(fields[3]);
+
+        agencia.addConta(Conta(contaId, saldo, titular));
+        loadedAny = true;
+    }
+
+    return loadedAny;
 }
 
 static void configurarPeers(NetworkNode &node) {
@@ -169,7 +223,22 @@ int main(int argc, char **argv) {
 
     try {
         Agencia agencia(idAgencia);
-        carregarContasIniciais(agencia, idAgencia);
+
+        std::string contasPath = "config/contas.csv";
+
+        if (argc >= 3) {
+            contasPath = argv[2];
+        }
+
+        bool carregouArquivo = carregarContasDeArquivo(agencia, idAgencia, contasPath);
+
+        if (!carregouArquivo) {
+            std::cout << "[AGENCIA " << idAgencia << "] "
+                    << "Nenhum arquivo de contas carregado.\n";
+            throw std::runtime_error("Nenhum arquivo de contas carregado.");
+        }
+        std::cout << "[AGENCIA " << idAgencia << "] "
+                << "Contas carregadas de " << contasPath << "\n";
 
         NetworkNode node(idAgencia, 5000 + idAgencia);
         configurarPeers(node);
