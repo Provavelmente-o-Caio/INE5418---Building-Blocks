@@ -44,7 +44,7 @@ void BankApplication::handleMensagem(const Message &message) {
 
         default:
             std::cerr << "[AGENCIA " << agencia.getId()
-                      << "] Tipo de mensagem desconhecido" << std::endl;
+                    << "] Tipo de mensagem desconhecido" << std::endl;
             break;
     }
 }
@@ -67,13 +67,13 @@ void BankApplication::handleTransferencia(const Message &message) {
     agencia.depositar(toAccount, amount);
 
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "Transferência recebida de agência "
-              << message.getFrom()
-              << ": depositado "
-              << amount
-              << " na conta "
-              << toAccount
-              << std::endl;
+            << "Transferência recebida de agência "
+            << message.getFrom()
+            << ": depositado "
+            << amount
+            << " na conta "
+            << toAccount
+            << std::endl;
 
     Message resposta;
     resposta.setType(RESPOSTA);
@@ -111,8 +111,8 @@ void BankApplication::transferir(
         agencia.depositar(idContaOrigem, valor);
 
         std::cerr << "[AGENCIA " << agencia.getId() << "] "
-                  << "Falha ao enviar transferência. Valor estornado para conta "
-                  << idContaOrigem << std::endl;
+                << "Falha ao enviar transferência. Valor estornado para conta "
+                << idContaOrigem << std::endl;
     }
 }
 
@@ -121,14 +121,14 @@ void BankApplication::iniciarSnapshot() {
 
     if (snapshotAtivo) {
         std::cout << "[AGENCIA " << agencia.getId() << "] "
-                  << "Snapshot já em andamento, ignorando solicitação.\n";
+                << "Snapshot já em andamento, ignorando solicitação.\n";
         return;
     }
 
     snapshotConcluido = false;
 
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "Iniciando snapshot distribuído (coordenador).\n";
+            << "Iniciando snapshot distribuído (coordenador).\n";
 
     salvarEstadoLocal(agencia.getId());
 }
@@ -143,13 +143,13 @@ void BankApplication::handleMarker(const Message &message) {
     if (!snapshotAtivo) {
         if (snapshotConcluido && idCoordenador == coordenadorId) {
             std::cout << "[AGENCIA " << agencia.getId() << "] "
-                      << "MARKER duplicado do snapshot já concluído ignorado.\n";
+                    << "MARKER duplicado do snapshot já concluído ignorado.\n";
             return;
         }
 
         std::cout << "[AGENCIA " << agencia.getId() << "] "
-                  << "MARKER recebido de " << remetente
-                  << " — salvando estado e propagando.\n";
+                << "MARKER recebido de " << remetente
+                << " — salvando estado e propagando.\n";
 
         snapshotConcluido = false;
         salvarEstadoLocal(idCoordenador);
@@ -164,8 +164,8 @@ void BankApplication::handleMarker(const Message &message) {
         marcadoresPendentes--;
 
         std::cout << "[AGENCIA " << agencia.getId() << "] "
-                  << "Canal de " << remetente
-                  << " fechado. Pendentes: " << marcadoresPendentes << "\n";
+                << "Canal de " << remetente
+                << " fechado. Pendentes: " << marcadoresPendentes << "\n";
     }
 
     verificarSnapshotCompleto();
@@ -173,8 +173,8 @@ void BankApplication::handleMarker(const Message &message) {
 
 void BankApplication::handleSnapshotEstado(const Message &message) {
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "Estado recebido de agência " << message.getFrom() << ":\n"
-              << message.getPayload() << "\n";
+            << "Estado recebido de agência " << message.getFrom() << ":\n"
+            << message.getPayload() << "\n";
 
     imprimirSnapshotGlobal(message.getPayload());
 }
@@ -192,7 +192,7 @@ void BankApplication::salvarEstadoLocal(const int idCoordenador) {
     auto peers = network.getConnectedNodes();
     marcadoresPendentes = 0;
 
-    for (const auto &[idPeer, porta] : peers) {
+    for (const auto &[idPeer, porta]: peers) {
         if (idPeer == agencia.getId()) continue;
 
         gravandoCanal[idPeer] = true;
@@ -201,11 +201,11 @@ void BankApplication::salvarEstadoLocal(const int idCoordenador) {
     }
 
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "Estado local capturado. Aguardando " << marcadoresPendentes
-              << " MARKER(s).\n";
+            << "Estado local capturado. Aguardando " << marcadoresPendentes
+            << " MARKER(s).\n";
 
     std::cout << "[AGENCIA " << agencia.getId() << "] Saldos no momento do snapshot:\n";
-    for (const auto &[idConta, saldo] : estadoLocal.saldos) {
+    for (const auto &[idConta, saldo]: estadoLocal.saldos) {
         std::cout << "  Conta " << idConta << ": R$ " << saldo << "\n";
     }
 
@@ -219,7 +219,7 @@ void BankApplication::propagarMarkers() {
     payloadStream << "COORDENADOR=" << coordenadorId;
     const std::string payload = payloadStream.str();
 
-    for (const auto &[idPeer, porta] : peers) {
+    for (const auto &[idPeer, porta]: peers) {
         if (idPeer == agencia.getId()) continue;
 
         Message marker;
@@ -232,10 +232,10 @@ void BankApplication::propagarMarkers() {
 
         if (status != 0) {
             std::cerr << "[AGENCIA " << agencia.getId() << "] "
-                      << "Falha ao enviar MARKER para agência " << idPeer << "\n";
+                    << "Falha ao enviar MARKER para agência " << idPeer << "\n";
         } else {
             std::cout << "[AGENCIA " << agencia.getId() << "] "
-                      << "MARKER enviado para agência " << idPeer << "\n";
+                    << "MARKER enviado para agência " << idPeer << "\n";
         }
     }
 }
@@ -248,21 +248,21 @@ void BankApplication::verificarSnapshotCompleto() {
     }
 
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "Snapshot local completo! Todos os canais fechados.\n";
+            << "Snapshot local completo! Todos os canais fechados.\n";
 
     std::ostringstream resultado;
     resultado << "AGENCIA=" << agencia.getId() << ";";
 
-    for (const auto &[idConta, saldo] : estadoLocal.saldos) {
+    for (const auto &[idConta, saldo]: estadoLocal.saldos) {
         resultado << "CONTA_" << idConta << "=" << saldo << ";";
     }
 
-    for (const auto &[idPeer, msgs] : mensagensCanal) {
+    for (const auto &[idPeer, msgs]: mensagensCanal) {
         resultado << "CANAL_" << idPeer << "_MSGS=" << msgs.size() << ";";
 
         for (size_t i = 0; i < msgs.size(); i++) {
             resultado << "CANAL_" << idPeer << "_MSG_" << i
-                      << "=" << msgs[i].getPayload() << ";";
+                    << "=" << msgs[i].getPayload() << ";";
         }
     }
 
@@ -276,8 +276,8 @@ void BankApplication::verificarSnapshotCompleto() {
 
     if (coordenadorId == agencia.getId()) {
         std::cout << "[AGENCIA " << agencia.getId() << "] "
-                  << "=== SNAPSHOT GLOBAL (coordenador) ===\n"
-                  << estadoStr << "\n";
+                << "=== SNAPSHOT GLOBAL (coordenador) ===\n"
+                << estadoStr << "\n";
     } else {
         Message estadoMsg;
         estadoMsg.setType(SNAPSHOT_ESTADO);
@@ -288,15 +288,15 @@ void BankApplication::verificarSnapshotCompleto() {
         network.sendTo(coordenadorId, estadoMsg);
 
         std::cout << "[AGENCIA " << agencia.getId() << "] "
-                  << "Estado enviado ao coordenador (agência " << coordenadorId << ").\n";
+                << "Estado enviado ao coordenador (agência " << coordenadorId << ").\n";
     }
 }
 
 void BankApplication::imprimirSnapshotGlobal(const std::string &estadosSerializados) const {
     std::cout << "\n[AGENCIA " << agencia.getId() << "] "
-              << "=== ESTADO RECEBIDO DE PARTICIPANTE ===\n"
-              << estadosSerializados << "\n"
-              << "========================================\n";
+            << "=== ESTADO RECEBIDO DE PARTICIPANTE ===\n"
+            << estadosSerializados << "\n"
+            << "========================================\n";
 }
 
 
@@ -349,22 +349,82 @@ std::map<std::string, std::string> BankApplication::parsePayload(
 
 void BankApplication::handleResposta(const Message &message) const {
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "Resposta recebida de " << message.getFrom()
-              << ": " << message.getPayload()
-              << std::endl;
+            << "Resposta recebida de " << message.getFrom()
+            << ": " << message.getPayload()
+            << std::endl;
 }
 
 void BankApplication::handleCriarConta(const Message &message) const {
-    std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "CRIAR_CONTA ainda não implementado: "
-              << message.getPayload()
-              << std::endl;
+    try {
+        const auto payload = parsePayload(message.getPayload());
+
+        const int accountId = std::stoi(payload.at("ACCOUNT_ID"));
+        const std::string titular = payload.at("TITULAR");
+        const double saldoInicial = std::stod(payload.at("SALDO"));
+
+        auto contas = agencia.getContas();
+
+        if (contas.contains(accountId)) {
+            std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                    << "Conta " << accountId << " já existe. "
+                    << "Criação recusada.\n";
+
+            Message resposta;
+            resposta.setType(ERRO);
+            resposta.setFrom(agencia.getId());
+            resposta.setTo(message.getFrom());
+            resposta.setPayload(
+                "STATUS=ERROR;MESSAGE=CONTA_JA_EXISTE;ACCOUNT_ID=" +
+                std::to_string(accountId)
+            );
+
+            network.sendTo(message.getFrom(), resposta);
+            return;
+        }
+
+        Conta novaConta(accountId, saldoInicial, titular);
+        agencia.addConta(novaConta);
+
+        std::cout << "[AGENCIA " << agencia.getId() << "] "
+                << "Conta criada: "
+                << "id=" << accountId
+                << ", titular=" << titular
+                << ", saldo=" << saldoInicial
+                << std::endl;
+
+        Message resposta;
+        resposta.setType(RESPOSTA);
+        resposta.setFrom(agencia.getId());
+        resposta.setTo(message.getFrom());
+        resposta.setPayload(
+            "STATUS=OK;MESSAGE=CONTA_CRIADA;ACCOUNT_ID=" +
+            std::to_string(accountId)
+        );
+
+        network.sendTo(message.getFrom(), resposta);
+    } catch (const std::exception &e) {
+        std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                << "Erro ao criar conta: "
+                << e.what()
+                << std::endl;
+
+        Message resposta;
+        resposta.setType(ERRO);
+        resposta.setFrom(agencia.getId());
+        resposta.setTo(message.getFrom());
+        resposta.setPayload(
+            std::string("STATUS=ERROR;MESSAGE=ERRO_AO_CRIAR_CONTA;DETAIL=") +
+            e.what()
+        );
+
+        network.sendTo(message.getFrom(), resposta);
+    }
 }
 
 void BankApplication::handlePing(const Message &message) const {
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "PING recebido de " << message.getFrom()
-              << std::endl;
+            << "PING recebido de " << message.getFrom()
+            << std::endl;
 
     Message pong;
     pong.setType(PONG);
@@ -377,9 +437,9 @@ void BankApplication::handlePing(const Message &message) const {
 
 void BankApplication::handleErro(const Message &message) const {
     std::cerr << "[AGENCIA " << agencia.getId() << "] "
-              << "Erro recebido de " << message.getFrom()
-              << ": " << message.getPayload()
-              << std::endl;
+            << "Erro recebido de " << message.getFrom()
+            << ": " << message.getPayload()
+            << std::endl;
 }
 
 
@@ -390,22 +450,22 @@ void BankApplication::imprimirContas() const {
 
     for (const auto &[idConta, conta]: contas) {
         std::cout << "Conta " << idConta
-                  << " | Titular: " << conta.getTitular()
-                  << " | Saldo: " << conta.getSaldo()
-                  << std::endl;
+                << " | Titular: " << conta.getTitular()
+                << " | Saldo: " << conta.getSaldo()
+                << std::endl;
     }
 }
 
 void BankApplication::handlePong(const Message &message) const {
     std::cout << "[AGENCIA " << agencia.getId() << "] "
-              << "PONG recebido de " << message.getFrom()
-              << ": " << message.getPayload()
-              << std::endl;
+            << "PONG recebido de " << message.getFrom()
+            << ": " << message.getPayload()
+            << std::endl;
 }
 
 int BankApplication::totalPeers() const {
     int count = 0;
-    for (const auto &[id, porta] : network.getConnectedNodes()) {
+    for (const auto &[id, porta]: network.getConnectedNodes()) {
         if (id != agencia.getId()) count++;
     }
     return count;

@@ -50,6 +50,10 @@ static void imprimirAjuda() {
     std::cout << "      Realiza transferência distribuída.\n";
     std::cout << "      Exemplo: transfer 2 1 2 100\n\n";
 
+    std::cout << "  criar_conta <agencia_destino> <id_conta> <titular> <saldo>\n";
+    std::cout << "      Cria uma conta em uma agência.\n";
+    std::cout << "      Exemplo: criar_conta 2 21 Daniel 1000\n\n";
+
     std::cout << "  demo_transfer\n";
     std::cout << "      Executa uma transferência de demonstração, dependendo da agência atual.\n\n";
 
@@ -244,6 +248,40 @@ int main(int argc, char **argv) {
                     double valor = std::stod(tokens[4]);
 
                     app.transferir(contaOrigem, agenciaDestino, contaDestino, valor);
+                    continue;
+                }
+
+                if (command == "criar_conta") {
+                    if (tokens.size() != 5) {
+                        std::cerr << "Uso: criar_conta <agencia_destino> <id_conta> <titular> <saldo>\n";
+                        continue;
+                    }
+
+                    int agenciaDestino = std::stoi(tokens[1]);
+                    int idConta = std::stoi(tokens[2]);
+                    std::string titular = tokens[3];
+                    double saldo = std::stod(tokens[4]);
+
+                    Message criarConta;
+                    criarConta.setType(CRIAR_CONTA);
+                    criarConta.setFrom(idAgencia);
+                    criarConta.setTo(agenciaDestino);
+
+                    std::ostringstream payload;
+                    payload << "ACCOUNT_ID=" << idConta << ";"
+                            << "TITULAR=" << titular << ";"
+                            << "SALDO=" << saldo;
+
+                    criarConta.setPayload(payload.str());
+
+                    int status = node.sendTo(agenciaDestino, criarConta);
+
+                    if (status != 0) {
+                        std::cerr << "[AGENCIA " << idAgencia << "] "
+                                << "Falha ao enviar solicitação de criação de conta para agência "
+                                << agenciaDestino << "\n";
+                    }
+
                     continue;
                 }
 
