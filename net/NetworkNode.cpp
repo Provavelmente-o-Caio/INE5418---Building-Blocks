@@ -5,6 +5,7 @@
 #include "NetworkNode.h"
 
 #include <iostream>
+#include <thread>
 #include <ostream>
 
 NetworkNode::NetworkNode(const int id, const int port) {
@@ -169,7 +170,9 @@ void NetworkNode::server() const {
             buffer[bytes_read] = '\0';
             std::string received_message(buffer, static_cast<size_t>(bytes_read));
             Message message = Message::deserialize(received_message);
-            onMessage(message);
+            std::thread([this, message]() {
+                this->onMessage(message);
+            }).detach();
         }
 
         close(client_fd);

@@ -77,9 +77,7 @@ void BankApplication::handleTransferencia(const Message &message) {
     const int toAccount = std::stoi(payload.at("TO_ACCOUNT"));
     const double amount = std::stod(payload.at("AMOUNT"));
 
-    requestCriticalSection();
     agencia.depositar(toAccount, amount);
-    releaseCriticalSection();
 
     std::cout << "[AGENCIA " << agencia.getId() << "] "
             << "Transferência recebida de agência "
@@ -107,10 +105,8 @@ void BankApplication::transferir(
 ) {
     requestCriticalSection();
     agencia.sacar(idContaOrigem, valor);
-    releaseCriticalSection();
 
     if (idAgenciaDestino == agencia.getId()) {
-        requestCriticalSection();
         agencia.depositar(idContaDestino, valor);
         releaseCriticalSection();
         return;
@@ -133,6 +129,7 @@ void BankApplication::transferir(
                 << "Falha ao enviar transferência. Valor estornado para conta "
                 << idContaOrigem << std::endl;
     }
+    releaseCriticalSection();
 }
 
 void BankApplication::iniciarSnapshot() {
