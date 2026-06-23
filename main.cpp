@@ -171,9 +171,6 @@ static void imprimirAjuda() {
     std::cout << "      Inicia snapshot distribuído de Chandy-Lamport a partir desta agência.\n";
     std::cout << "      Esta agência será o coordenador e receberá os estados de todas as outras.\n\n";
 
-    std::cout << "  mutex\n";
-    std::cout << "      Placeholder para futura exclusão mútua distribuída.\n\n";
-
     std::cout << "  exit\n";
     std::cout << "      Encerra o processo.\n\n";
 }
@@ -456,14 +453,6 @@ int main(int argc, char **argv) {
                     // Esta agência será o coordenador: salva seu estado local,
                     // envia MARKERs para todos os peers e aguarda os estados deles.
                     app.iniciarSnapshot();
-                    continue;
-                }
-
-                if (command == "mutex") {
-                    std::cout << "[AGENCIA " << idAgencia << "] "
-                            << "Exclusão mútua distribuída ainda não implementada.\n";
-                    std::cout <<
-                            "Próximo passo: criar MutexManager e mensagens MUTEX_REQUEST/MUTEX_REPLY/MUTEX_RELEASE.\n";
                     continue;
                 }
 
