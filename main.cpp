@@ -79,10 +79,59 @@ static bool carregarContasDeArquivo(
     return loadedAny;
 }
 
-static void configurarPeers(NetworkNode &node) {
-    node.addNode(1, 5001);
-    node.addNode(2, 5002);
-    node.addNode(3, 5003);
+// static void configurarPeers(NetworkNode &node) {
+//     node.addNode(1, 5001);
+//     node.addNode(2, 5002);
+//     node.addNode(3, 5003);
+// }
+
+static bool carregarNodosDeArquivo(NetworkNode &node, int idLocal, const std::string &path) {
+
+    std::ifstream file(path);
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool loadedAny = false;
+    int lineNumber = 0;
+
+    while (std::getline(file, line)) {
+        lineNumber++;
+
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+
+        auto fields = splitCsvLine(line);
+
+        if (fields.size() != 2) {
+            std::cerr << "[CONFIG] Linha inválida em " << path
+                    << ":" << lineNumber << " -> " << line << "\n";
+            continue;
+        }
+
+        if (fields[0] == "id") {
+            continue;
+        }
+
+        std::cout << fields[0] << std::endl;
+        std::cout << fields[1] << std::endl;
+
+
+        int idNode = std::stoi(fields[0]);
+        int port = std::stoi(fields[1]);
+
+        if (idNode == idLocal) {
+            continue;
+        }
+
+        node.addNode(idNode, port);
+        loadedAny = true;
+    }
+
+    return loadedAny;
 }
 
 static void imprimirAjuda() {
@@ -241,7 +290,11 @@ int main(int argc, char **argv) {
                 << "Contas carregadas de " << contasPath << "\n";
 
         NetworkNode node(idAgencia, 5000 + idAgencia);
-        configurarPeers(node);
+        std::string nodesPath = "config/nodes.csv";
+
+        if (!carregarNodosDeArquivo(node, idAgencia, nodesPath)) {
+             throw std::runtime_error("Nenhum peer carregado de " + nodesPath);
+        }
 
         BankApplication app(agencia, node);
 
