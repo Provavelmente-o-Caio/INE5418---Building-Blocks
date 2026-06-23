@@ -109,21 +109,33 @@ static void imprimirAjuda() {
     std::cout << "      Exemplo: criar_conta 2 21 Daniel 1000\n\n";
 
     std::cout << "  apagar_conta <agencia_destino> <id_conta>\n";
-    std::cout << "      apagar uma conta em uma agência.\n";
+    std::cout << "      Apaga uma conta em uma agência.\n";
     std::cout << "      Exemplo: apagar_conta 2 21\n\n";
 
     std::cout << "  demo_transfer\n";
-    std::cout << "      Executa uma transferência de demonstração, dependendo da agência atual.\n\n";
+    std::cout << "      Executa uma transferência de demonstração.\n\n";
 
     std::cout << "  demo_ping\n";
     std::cout << "      Envia PING para todos os peers em sequência.\n\n";
 
     std::cout << "  snapshot\n";
-    std::cout << "      Inicia snapshot distribuído de Chandy-Lamport a partir desta agência.\n";
-    std::cout << "      Esta agência será o coordenador e receberá os estados de todas as outras.\n\n";
+    std::cout << "      Inicia snapshot distribuído de Chandy-Lamport a partir desta agência.\n\n";
 
     std::cout << "  mutex\n";
     std::cout << "      Placeholder para futura exclusão mútua distribuída.\n\n";
+
+    std::cout << "  --- COMANDOS DE SIMULAÇÃO (Sem Parâmetros) ---\n";
+    std::cout << "  sim_concorrencia\n";
+    std::cout << "      Dispara múltiplas threads transferindo pequenos valores simultaneamente.\n\n";
+    
+    std::cout << "  sim_atraso\n";
+    std::cout << "      Agenda uma transferência para ocorrer após 5 segundos em background.\n\n";
+
+    std::cout << "  sim_snapshot\n";
+    std::cout << "      Gera tráfego contínuo de transferências e dispara o snapshot no meio para forçar captura de mensagens em trânsito.\n\n";
+
+    std::cout << "  sim_snapshot_falha\n";
+    std::cout << "      tem que falhar manualmente o terminal alvo.\n\n";
 
     std::cout << "  exit\n";
     std::cout << "      Encerra o processo.\n\n";
@@ -201,6 +213,105 @@ static void executarDemoTransferencia(BankApplication &app, int idAgencia) {
         app.transferir(3, 1, 1, 75.0);
     }
 }
+
+static void obterRotasDeSimulacao(int idAgencia, int &agenciaDestino, int &contaOrigem, int &contaDestino) {
+    // Roteamento circular: Ag1->Ag2, Ag2->Ag3, Ag3->Ag1
+    agenciaDestino = (idAgencia % 3) + 1; 
+    contaOrigem = idAgencia;
+    contaDestino = agenciaDestino;
+}
+
+static void simularConcorrencia(BankApplication &app, int idAgencia) {
+    int agenciaDestino, contaOrigem, contaDestino;
+    obterRotasDeSimulacao(idAgencia, agenciaDestino, contaOrigem, contaDestino);
+
+    std::cout << "[SIMULAÇÃO] Iniciando concorrência massiva (Ag " << idAgencia << " -> Ag " << agenciaDestino << ")...\n";
+    std::vector<std::thread> threads;
+    
+    for (int i = 0; i < 10; ++i) {
+        threads.emplace_back([&app, agenciaDestino, contaOrigem, contaDestino]() {
+            for (int j = 0; j < 5; j++) {
+                app.transferir(contaOrigem, agenciaDestino, contaDestino, 1.00);
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        });
+    }
+
+    for (auto &t : threads) {
+        if (t.joinable()) t.join();
+    }
+    std::cout << "[SIMULAÇÃO] Concorrência finalizada.\n";
+}
+
+static void simularAtraso(BankApplication &app, int idAgencia) {
+    int agenciaDestino, contaOrigem, contaDestino;
+    obterRotasDeSimulacao(idAgencia, agenciaDestino, contaOrigem, contaDestino);
+
+    std::cout << "[SIMULAÇÃO] Agendando operação com atraso de 5s (Ag " << idAgencia << " -> Ag " << agenciaDestino << ")...\n";
+    
+    std::thread([&app, agenciaDestino, contaOrigem, contaDestino]() {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::cout << "\n[SIMULAÇÃO] Disparando transferência atrasada agora!\n";
+        app.transferir(contaOrigem, agenciaDestino, contaDestino, 50.00);
+    }).detach();
+}
+
+static void simularSnapshot(BankApplication &app, int idAgencia) {
+    int agenciaDestino, contaOrigem, contaDestino;
+    obterRotasDeSimulacao(idAgencia, agenciaDestino, contaOrigem, contaDestino);
+
+    std::cout << "[SIMULAÇÃO] Iniciando teste de snapshot com tráfego pesado (Ag " << idAgencia << " -> Ag " << agenciaDestino << ")...\n";
+    std::cout << "[SIMULAÇÃO] O atraso no envio do MARKER garantirá a captura das mensagens pelo canal.\n";
+    
+    // Thread gerando tráfego contínuo (ruído na rede)
+    std::thread ruido([&app, agenciaDestino, contaOrigem, contaDestino]() {
+        for (int i = 0; i < 2; i++) {
+            app.transferir(contaOrigem, agenciaDestino, contaDestino, 5.00);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Envia a cada 100ms
+        }
+    });
+
+    // Thread disparando o snapshot no meio do tráfego
+    std::thread coordenador([&app]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(40)); // Espera 40ms (no meio das 15 transferências)
+        std::cout << "\n[SIMULAÇÃO] *** DISPARANDO SNAPSHOT AGORA ***\n";
+        app.iniciarSnapshot();
+    });
+
+    ruido.detach();
+    coordenador.detach();
+}
+
+static void simularFalha() {
+    std::cout << "[SIMULAÇÃO] Congelando a thread principal do terminal por 20 segundos...\n";
+    std::this_thread::sleep_for(std::chrono::seconds(20));
+    std::cout << "[SIMULAÇÃO] Terminal recuperado.\n";
+}
+
+static void sim_snapshot_com_falha(BankApplication &app, int idAgencia, int idAlvoParaFalhar) {
+    // Verifica se o alvo é o próprio coordenador (que neste caso é o app)
+    if (idAgencia == idAlvoParaFalhar) {
+        std::cout << "[ERRO] Você não pode falhar o próprio coordenador neste comando.\n";
+        return;
+    }
+
+    std::cout << "[SIMULAÇÃO] Agendando falha na Agência " << idAlvoParaFalhar << "...\n";
+    
+    // Dispara o snapshot normalmente no coordenador (app)
+    app.iniciarSnapshot(true);
+    
+    // Disparo da falha em background
+    std::thread([&app, idAlvoParaFalhar]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(800));
+        
+        // Se este fosse o nó alvo, ele falharia. 
+        // Como o comando é disparado na agência, você deve disparar 
+        // o comando de falha no terminal da agência que você quer derrubar.
+        std::cout << "\n[SIMULAÇÃO] !!! FALHA FORÇADA NO NÓ PARTICIPANTE " << idAlvoParaFalhar << " !!!\n";
+    }).detach();
+}
+
+// ----------------------------------------------
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -397,21 +508,44 @@ int main(int argc, char **argv) {
                     executarDemoTransferencia(app, idAgencia);
                     continue;
                 }
-
                 if (command == "snapshot") {
-                    // Inicia o snapshot distribuído de Chandy-Lamport.
-                    // Esta agência será o coordenador: salva seu estado local,
-                    // envia MARKERs para todos os peers e aguarda os estados deles.
-                    app.iniciarSnapshot();
+                    app.iniciarSnapshot(false); 
                     continue;
                 }
+
 
                 if (command == "mutex") {
                     std::cout << "[AGENCIA " << idAgencia << "] "
                             << "Exclusão mútua distribuída ainda não implementada.\n";
-                    std::cout <<
-                            "Próximo passo: criar MutexManager e mensagens MUTEX_REQUEST/MUTEX_REPLY/MUTEX_RELEASE.\n";
                     continue;
+                }
+
+                // --- COMANDOS DE SIMULAÇÃO ---
+
+                if (command == "sim_concorrencia") {
+                    simularConcorrencia(app, idAgencia);
+                    continue;
+                }
+
+                if (command == "sim_atraso") {
+                    simularAtraso(app, idAgencia);
+                    continue;
+                }
+
+                if (command == "sim_snapshot") {
+                    std::cout << "[SIMULAÇÃO] Rodando cenário especial de snapshot...\n";
+                    
+                    simularSnapshot(app, idAgencia); 
+                    continue;
+                }
+
+                if (command == "sim_falha") {
+                    simularFalha();
+                    continue;
+                }
+                if (command == "sim_snapshot_falha") {
+                sim_snapshot_com_falha(app, idAgencia, idAgencia+1);
+                continue;
                 }
 
                 std::cout << "Comando desconhecido: " << command << "\n";

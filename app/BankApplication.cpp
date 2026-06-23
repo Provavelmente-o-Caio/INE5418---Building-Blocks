@@ -4,105 +4,58 @@
 
 #include "BankApplication.h"
 #include <algorithm>
+#include <thread>
+#include <chrono>
+#include <cstddef> 
 
 BankApplication::BankApplication(Agencia &agencia, NetworkNode &network)
-    : agencia(agencia), network(network) {
+    : agencia(agencia), network(network), modoSimulado(false) {
 }
 
 void BankApplication::handleMensagem(const Message &message) {
     switch (message.getType()) {
-        case TRANSFERENCIA:
-            handleTransferencia(message);
-            break;
-
-        case RESPOSTA:
-            handleResposta(message);
-            break;
-
-        case CRIAR_CONTA:
-            handleCriarConta(message);
-            break;
-
-        case APAGAR_CONTA:
-            handleApagarConta(message);
-            break;
-
-        case PING:
-            handlePing(message);
-            break;
-
-        case PONG:
-            handlePong(message);
-            break;
-
-        case REQUEST:
-            handleRequest(message);
-            break;
-
-        case REPLY:
-            handleReply(message);
-            break;
-
-        case ERRO:
-            handleErro(message);
-            break;
-
-        case MARKER:
-            handleMarker(message);
-            break;
-
-        case SNAPSHOT_ESTADO:
-            handleSnapshotEstado(message);
-            break;
-
+        case TRANSFERENCIA: handleTransferencia(message); break;
+        case RESPOSTA:      handleResposta(message); break;
+        case CRIAR_CONTA:   handleCriarConta(message); break;
+        case APAGAR_CONTA:  handleApagarConta(message); break;
+        case PING:          handlePing(message); break;
+        case PONG:          handlePong(message); break;
+        case REQUEST:       handleRequest(message); break;
+        case REPLY:         handleReply(message); break;
+        case ERRO:          handleErro(message); break;
+        case MARKER:        handleMarker(message); break;
+        case SNAPSHOT_ESTADO: handleSnapshotEstado(message); break;
         default:
-            std::cerr << "[AGENCIA " << agencia.getId()
-                    << "] Tipo de mensagem desconhecido" << std::endl;
+            std::cerr << "[AGENCIA " << agencia.getId() << "] Tipo de mensagem desconhecido" << std::endl;
             break;
     }
 }
 
-
 void BankApplication::handleTransferencia(const Message &message) {
     {
         std::lock_guard<std::mutex> lock(snapshotMutex);
-        if (snapshotAtivo && gravandoCanal.count(message.getFrom()) &&
-            gravandoCanal.at(message.getFrom())) {
+        if (snapshotAtivo && gravandoCanal.count(message.getFrom()) && gravandoCanal.at(message.getFrom())) {
             mensagensCanal[message.getFrom()].push_back(message);
         }
     }
 
     const auto payload = parsePayload(message.getPayload());
-
     const int toAccount = std::stoi(payload.at("TO_ACCOUNT"));
     const double amount = std::stod(payload.at("AMOUNT"));
 
     agencia.depositar(toAccount, amount);
 
-    std::cout << "[AGENCIA " << agencia.getId() << "] "
-            << "Transferência recebida de agência "
-            << message.getFrom()
-            << ": depositado "
-            << amount
-            << " na conta "
-            << toAccount
-            << std::endl;
+    std::cout << "[AGENCIA " << agencia.getId() << "] Transferência recebida: " << amount << " na conta " << toAccount << std::endl;
 
     Message resposta;
     resposta.setType(RESPOSTA);
     resposta.setFrom(agencia.getId());
     resposta.setTo(message.getFrom());
     resposta.setPayload("STATUS=OK;MESSAGE=TRANSFERENCIA_RECEBIDA");
-
     network.sendTo(message.getFrom(), resposta);
 }
 
-void BankApplication::transferir(
-    const int idContaOrigem,
-    const int idAgenciaDestino,
-    const int idContaDestino,
-    const double valor
-) {
+void BankApplication::transferir(const int idContaOrigem, const int idAgenciaDestino, const int idContaDestino, const double valor) {
     requestCriticalSection();
     agencia.sacar(idContaOrigem, valor);
 
@@ -112,44 +65,40 @@ void BankApplication::transferir(
         return;
     }
 
-    Message message = criarMensagemTransferencia(
-        agencia.getId(),
-        idAgenciaDestino,
-        idContaOrigem,
-        idContaDestino,
-        valor
-    );
-
+    Message message = criarMensagemTransferencia(agencia.getId(), idAgenciaDestino, idContaOrigem, idContaDestino, valor);
     int status = network.sendTo(idAgenciaDestino, message);
 
     if (status != 0) {
         agencia.depositar(idContaOrigem, valor);
-
-        std::cerr << "[AGENCIA " << agencia.getId() << "] "
-                << "Falha ao enviar transferência. Valor estornado para conta "
-                << idContaOrigem << std::endl;
+        std::cerr << "[AGENCIA " << agencia.getId() << "] Falha no envio. Estornado.\n";
     }
     releaseCriticalSection();
 }
 
-void BankApplication::iniciarSnapshot() {
+void BankApplication::iniciarSnapshot(bool modoSimulado) {
     std::lock_guard<std::mutex> lock(snapshotMutex);
 
     if (snapshotAtivo) {
-        std::cout << "[AGENCIA " << agencia.getId() << "] "
-                << "Snapshot já em andamento, ignorando solicitação.\n";
+        std::cout << "[AGENCIA " << agencia.getId() << "] Snapshot já em andamento.\n";
         return;
     }
 
+    this->modoSimulado = modoSimulado;
+    this->ativo = true; // Garante que o nó está funcional ao iniciar
+    this->inicioSnapshot = std::chrono::steady_clock::now(); // Marca o início para o timeout
     snapshotConcluido = false;
 
-    std::cout << "[AGENCIA " << agencia.getId() << "] "
-            << "Iniciando snapshot distribuído (coordenador).\n";
+    if (this->modoSimulado) {
+        std::cout << "[AGENCIA " << agencia.getId() << "] Iniciando SNAPSHOT EM MODO SIMULADO.\n";
+    } else {
+        std::cout << "[AGENCIA " << agencia.getId() << "] Iniciando Snapshot Manual.\n";
+    }
 
     salvarEstadoLocal(agencia.getId());
 }
 
 void BankApplication::handleMarker(const Message &message) {
+    if (!ativo) return;
     std::unique_lock<std::mutex> lock(snapshotMutex);
 
     const int remetente = message.getFrom();
@@ -224,10 +173,9 @@ void BankApplication::salvarEstadoLocal(const int idCoordenador) {
 
     propagarMarkers();
 }
-
 void BankApplication::propagarMarkers() {
+    if (!ativo) return;
     auto peers = network.getConnectedNodes();
-
     std::ostringstream payloadStream;
     payloadStream << "COORDENADOR=" << coordenadorId;
     const std::string payload = payloadStream.str();
@@ -241,7 +189,21 @@ void BankApplication::propagarMarkers() {
         marker.setTo(idPeer);
         marker.setPayload(payload);
 
-        int status = network.sendTo(idPeer, marker);
+        if (modoSimulado) {
+            std::thread([this, idPeer, marker]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(800));
+                int status = network.sendTo(idPeer, marker);
+
+                if (status != 0) {
+                    std::cerr << "[AGENCIA " << agencia.getId() << "] "
+                            << "Falha ao enviar MARKER para agência " << idPeer << "\n";
+                } else {
+                    std::cout << "[AGENCIA " << agencia.getId() << "] "
+                            << "MARKER enviado para agência " << idPeer << "\n";
+                }
+            }).detach();
+        } else {
+            int status = network.sendTo(idPeer, marker);
 
         if (status != 0) {
             std::cerr << "[AGENCIA " << agencia.getId() << "] "
@@ -250,47 +212,48 @@ void BankApplication::propagarMarkers() {
             std::cout << "[AGENCIA " << agencia.getId() << "] "
                     << "MARKER enviado para agência " << idPeer << "\n";
         }
+        }
     }
 }
 
 void BankApplication::verificarSnapshotCompleto() {
-    // Pré-condição: snapshotMutex deve estar adquirido pelo chamador.
+    // 1. Verificação de Timeout no Coordenador
+    if (snapshotAtivo && coordenadorId == agencia.getId()) {
+        auto agora = std::chrono::steady_clock::now();
+        auto duracao = std::chrono::duration_cast<std::chrono::milliseconds>(agora - inicioSnapshot).count();
 
-    if (!snapshotAtivo || marcadoresPendentes > 0) {
-        return;
+        if (duracao > TIMEOUT_MS) {
+            std::cerr << "[AGENCIA " << agencia.getId() << "] TIMEOUT! Snapshot global cancelado. Alguma agência falhou ou não respondeu.\n";
+            snapshotAtivo = false;
+            return; 
+        }
     }
 
-    std::cout << "[AGENCIA " << agencia.getId() << "] "
-            << "Snapshot local completo! Todos os canais fechados.\n";
+    // 2. Verificação de conclusão do protocolo
+    if (!snapshotAtivo || marcadoresPendentes > 0) return;
 
+    std::cout << "[AGENCIA " << agencia.getId() << "] Snapshot local completo! Todos os canais fechados.\n";
+    
     std::ostringstream resultado;
     resultado << "AGENCIA=" << agencia.getId() << ";";
-
-    for (const auto &[idConta, saldo]: estadoLocal.saldos) {
+    for (const auto &[idConta, saldo]: estadoLocal.saldos) 
         resultado << "CONTA_" << idConta << "=" << saldo << ";";
-    }
-
+    
     for (const auto &[idPeer, msgs]: mensagensCanal) {
         resultado << "CANAL_" << idPeer << "_MSGS=" << msgs.size() << ";";
-
         for (size_t i = 0; i < msgs.size(); i++) {
-            resultado << "CANAL_" << idPeer << "_MSG_" << i
-                    << "=" << msgs[i].getPayload() << ";";
+            resultado << "CANAL_" << idPeer << "_MSG_" << i << "=" << msgs[i].getPayload() << ";";
         }
     }
 
     const std::string estadoStr = resultado.str();
-
     snapshotAtivo = false;
     snapshotConcluido = true;
-    marcadoresPendentes = 0;
     gravandoCanal.clear();
     mensagensCanal.clear();
 
     if (coordenadorId == agencia.getId()) {
-        std::cout << "[AGENCIA " << agencia.getId() << "] "
-                << "=== SNAPSHOT GLOBAL (coordenador) ===\n"
-                << estadoStr << "\n";
+        std::cout << "[AGENCIA " << agencia.getId() << "] === SNAPSHOT GLOBAL FINALIZADO ===\n" << estadoStr << "\n";
     } else {
         Message estadoMsg;
         estadoMsg.setType(SNAPSHOT_ESTADO);
@@ -298,11 +261,17 @@ void BankApplication::verificarSnapshotCompleto() {
         estadoMsg.setTo(coordenadorId);
         estadoMsg.setPayload(estadoStr);
 
-        network.sendTo(coordenadorId, estadoMsg);
-
-        std::cout << "[AGENCIA " << agencia.getId() << "] "
-                << "Estado enviado ao coordenador (agência " << coordenadorId << ").\n";
+        if (modoSimulado) {
+            std::thread([this, estadoMsg]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                network.sendTo(coordenadorId, estadoMsg);
+            }).detach();
+        } else {
+            network.sendTo(coordenadorId, estadoMsg);
+        }
+        std::cout << "[AGENCIA " << agencia.getId() << "] Estado enviado ao coordenador (agência " << coordenadorId << ").\n";
     }
+
     snapshotConcluido = false;
 }
 
@@ -312,7 +281,6 @@ void BankApplication::imprimirSnapshotGlobal(const std::string &estadosSerializa
             << estadosSerializados << "\n"
             << "========================================\n";
 }
-
 
 Message BankApplication::criarMensagemTransferencia(
     const int idAgenciaOrigem,
@@ -648,7 +616,6 @@ void BankApplication::handleReply(const Message &message) {
         }
     }
 }
-
 
 void BankApplication::imprimirContas() const {
     const auto &contas = agencia.getContas();

@@ -20,9 +20,12 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <chrono>
+#include <functional>
 
 class BankApplication {
 public:
+    
     BankApplication(Agencia &agencia, NetworkNode &network);
 
     void handleMensagem(const Message &message);
@@ -35,9 +38,11 @@ public:
     );
 
     // Inicia um snapshot distribuído a partir desta agência (ela é o coordenador).
-    void iniciarSnapshot();
+    void iniciarSnapshot(bool modoSimulado = false);
 
     void imprimirContas() const;
+
+    void simularFalha() { this->ativo = false; std::cout << "[AGENCIA " << agencia.getId() << "] FALHA SIMULADA: Nó parou.\n"; }
 
 private:
     Agencia &agencia;
@@ -49,9 +54,14 @@ private:
 
     // Protege todas as variáveis de snapshot abaixo contra acessos concorrentes.
     std::mutex snapshotMutex;
+    std::chrono::steady_clock::time_point inicioSnapshot;
+    const int TIMEOUT_MS = 5000; // 5 segundos de limite
 
     // true enquanto um snapshot está em andamento neste nó.
     bool snapshotAtivo{false};
+
+    bool modoSimulado;
+    bool ativo = true;
 
     // true depois que o snapshot mais recente foi finalizado.
     // Usado para ignorar MARKERs duplicados/atrasados do mesmo coordenador.
