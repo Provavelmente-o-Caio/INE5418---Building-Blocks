@@ -306,6 +306,7 @@ void BankApplication::verificarSnapshotCompleto() {
         std::cout << "[AGENCIA " << agencia.getId() << "] "
                 << "Estado enviado ao coordenador (agência " << coordenadorId << ").\n";
     }
+    snapshotConcluido = false;
 }
 
 void BankApplication::imprimirSnapshotGlobal(const std::string &estadosSerializados) const {
